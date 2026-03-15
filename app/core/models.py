@@ -68,7 +68,7 @@ class CatalogProduct(Base):
     description = Column(Text, nullable=True)
 
     min_threshold = Column(Integer, default=10)
-    critical_threshold = Column(Integer, default=5)
+    #critical_threshold = Column(Integer, default=5)
     target_quantity = Column(Integer, default=30)
 
     created_at = Column(DateTime, default=datetime.now)
@@ -78,4 +78,4 @@ class CatalogProduct(Base):
     items = relationship("TaggedItem", back_populates="product", cascade="all, delete-orphan")
 
     def __repr__(self):
-        return f"<Product {self.sku}: {self.name} ({self.current_quantity} {self.unit})>"
+        return f"<CatalogProduct {self.sku}: {self.name}>"

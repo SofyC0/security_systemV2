@@ -4,7 +4,7 @@ import sys
 import time
 import threading
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 sys.path.append('.')
@@ -18,6 +18,7 @@ from app.core.inventory_service import InventoryService
 import app.core.inventory_service
 import app.core.services
 from app.core.models import TaggedItem
+from app.core.models import CatalogProduct
 from config.settings import settings
 from app.core.logging_config import setup_logging
 
@@ -128,8 +129,7 @@ class RFIDStoreSystem:
             return False
 
     def run_telegram_bot(self):
-        if not self.tg_bot:
-            return
+        asyncio.run(self.tg_bot.start())
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -166,11 +166,7 @@ class RFIDStoreSystem:
             for item in unpaid_items:
                 message += f"• {item['name']} (`{item['rfid']}`)\n"
 
-        # Отправляем через сервис (асинхронно)
-        asyncio.run_coroutine_threadsafe(
-            self.rfid_service.send_telegram_notification(message, "alarm"),
-            self.tg_bot.loop
-        )
+        self.rfid_service.send_telegram_notification(message, "alarm")
 
         logger.info("Ожидание 5 секунд...")
         time.sleep(5)
@@ -270,13 +266,15 @@ class RFIDStoreSystem:
         logger.info("0. Назад")
 
         try:
+            logger.info("Главное меню")
             choice = input("\nВыберите действие (0-3): ").strip()
 
             if choice == "0":
                 return
             elif choice == "1":
                 try:
-                    new_interval = int(input("Новый интервал (секунды, 1-30): "))
+                    new_interval = int(logger.info("Новый интервал (секунды, 1-30): "))
+                    input()
                     if 1 <= new_interval <= 30:
                         self.check_interval = new_interval
                         logger.info(f"Интервал изменен на {new_interval} секунд")
@@ -286,7 +284,8 @@ class RFIDStoreSystem:
                     logger.info("Введите число")
             elif choice == "2":
                 try:
-                    new_hour = int(input("Новый час (0-23): "))
+                    new_hour = int(logger.info("Новый час (0-23): "))
+                    input()
                     if 0 <= new_hour <= 23:
                         self.daily_check_hour = new_hour
                         logger.info(f"Час ежедневной проверки изменен на {new_hour}:00")
@@ -296,7 +295,8 @@ class RFIDStoreSystem:
                     logger.info("Введите число")
             elif choice == "3":
                 try:
-                    new_interval = int(input("Новый интервал (часы, 1-24): "))
+                    new_interval = int(logger.info("Новый интервал (часы, 1-24): "))
+                    input()
                     if 1 <= new_interval <= 24:
                         self.hourly_check_interval = new_interval
                         logger.info(f"Интервал проверки запасов изменен на {new_interval} часов")
@@ -333,6 +333,7 @@ class RFIDStoreSystem:
             logger.info("0. Выход в главное меню")
 
             try:
+                logger.info("Главное меню")
                 choice = input("\nВыберите сценарий (0-7): ").strip()
 
                 if choice == "0":
@@ -354,7 +355,8 @@ class RFIDStoreSystem:
 
                     # Если это сценарий 3, демонстрируем процесс оплаты
                     if choice == "3":
-                        input("\nНажмите Enter для имитации оплаты неоплаченного товара...")
+                        logger.info("Нажмите Enter для продолжения...")
+                        input()
 
                         # Оплачиваем неоплаченный товар
                         self.rfid_service.mark_as_paid(["RFID_7E3A5B1C"], "demo_cashier")
@@ -367,7 +369,8 @@ class RFIDStoreSystem:
                         else:
                             logger.info("Всё в порядке, тревоги нет")
 
-                    input("\nНажмите Enter для продолжения...")
+                    logger.info("Нажмите Enter для продолжения...")
+                    input()
 
                 else:
                     logger.info("Неверный выбор. Попробуйте снова.")
@@ -431,6 +434,7 @@ class RFIDStoreSystem:
 
         while True:
             try:
+                logger.info("Главное меню")
                 rfid_input = input("\nВведите RFID метку (или '0' для выхода): ").strip()
 
                 if rfid_input == "0":
@@ -554,6 +558,7 @@ class RFIDStoreSystem:
             logger.info("0. Назад в главное меню")
 
             try:
+                logger.info("Главное меню")
                 choice = input("\nВыберите действие (0-6): ").strip()
 
                 if choice == "0":
@@ -588,6 +593,7 @@ class RFIDStoreSystem:
                     logger.info("=" * 60)
 
                 elif choice == "2":
+                    logger.info("Главное меню")
                     sku = input("Введите артикул товара: ").strip()
                     try:
                         new_quantity = int(input("Введите новое количество: ").strip())
@@ -681,51 +687,93 @@ class RFIDStoreSystem:
             while True:
                 self.show_main_menu()
 
+                logger.info("Выберите действие (0-7): ")
+
+                # Безопасный ввод: защищаем от None, EOF и Ctrl+C
                 try:
-                    choice = input("\nВыберите действие (0-7): ").strip()
+                    choice_input = input()
+                    choice = (choice_input or "").strip()  # если None → пустая строка
+                except (EOFError, KeyboardInterrupt):
+                    logger.info("Ввод прерван (Ctrl+C или конец ввода)")
+                    break
+                except Exception as e:
+                    logger.error(f"Ошибка при вводе: {e}")
+                    choice = ""
 
-                    if choice == "0":
-                        logger.info("Завершение работы системы...")
-                        if self.tg_bot:
-                            logger.info("Остановка Telegram бота...")
-                        logger.info("До свидания!")
-                        break
-
-                    elif choice == "1":
-                        self.run_continuous_mode()
-
-                    elif choice == "2":
-                        self.run_demo_mode()
-
-                    elif choice == "3":
-                        self.show_system_stats()
-                        input("\nНажмите Enter для продолжения...")
-
-                    elif choice == "4":
-                        self.search_item_menu()
-
-                    elif choice == "5":
-                        self.inventory_management_menu()
-
-                    elif choice == "6":
-                        self.telegram_bot_menu()
-                        input("\nНажмите Enter для продолжения...")
-
-                    elif choice == "7":
-                        self.show_settings_menu()
-
-                    else:
-                        logger.info("Неверный выбор. Попробуйте снова.")
-
-                except KeyboardInterrupt:
-                    logger.info("Прервано пользователем")
+                if not choice:
+                    logger.info("Пустой ввод, повторяем меню...")
                     continue
 
-        except KeyboardInterrupt:
-            logger.info("Завершение работы системы...")
-        except Exception as e:
-            logger.info(f"Критическая ошибка: {e}")
+                if choice == "0":
+                    logger.info("Завершение работы системы...")
+                    if self.tg_bot:
+                        logger.info("Остановка Telegram бота...")
+                        self.tg_bot.stop()  # если у тебя есть метод stop
+                    logger.info("До свидания!")
+                    break
 
+                elif choice == "1":
+                    self.run_continuous_mode()
+
+                elif choice == "2":
+                    self.run_demo_mode()
+
+                elif choice == "3":
+                    self.show_system_stats()
+                    logger.info("Нажмите Enter для продолжения...")
+                    input()  # здесь input можно оставить, т.к. это пауза
+
+                elif choice == "4":
+                    self.search_item_menu()
+
+                elif choice == "5":
+                    self.inventory_management_menu()
+
+                elif choice == "6":
+                    self.telegram_bot_menu()
+                    logger.info("Нажмите Enter для продолжения...")
+                    input()
+
+                elif choice == "7":
+                    self.show_settings_menu()
+
+                else:
+                    logger.info(f"Неверный выбор: '{choice}'. Попробуйте снова.")
+
+        except KeyboardInterrupt:
+            logger.info("Завершение работы системы... (Ctrl+C)")
+
+        except Exception as e:
+            logger.error(f"Критическая ошибка в главном цикле: {e}", exc_info=True)
+
+        finally:
+            # Финальная очистка, если нужно
+            logger.info("Программа завершена")
+
+def add_test_tags():
+    with db.get_session() as session:
+        prod = session.query(CatalogProduct).filter_by(sku='MLK001').first()
+        if not prod:
+            prod = CatalogProduct(sku='MLK001', name='Молоко 3.2%', unit='л')
+            session.add(prod)
+            session.commit()
+
+        tags = [
+            ('E5873206', 'не_оплачен'),
+            ('CC1A3A06', 'не_оплачен')
+        ]
+        for uid, status in tags:
+            exists = session.query(TaggedItem).filter_by(rfid_uid=uid).first()
+            if not exists:
+                item = TaggedItem(
+                    product_id=prod.product_id,
+                    rfid_uid=uid,
+                    status=status,
+                    expiration_date=datetime.now().date() + timedelta(days=14)
+                )
+                session.add(item)
+        session.commit()
+        logger.info("Тестовые метки добавлены!")
 
 def main():
     logger.info("=" * 60)
@@ -738,6 +786,8 @@ def main():
         sys.exit(1)
 
     system.run()
+
+# Временный код для добавления тестовых меток — удали после теста
 
 
 if __name__ == "__main__":

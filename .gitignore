@@ -1,0 +1,54 @@
+# Python / виртуальное окружение
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# База данных и логи
+*.db
+*.sqlite3
+logs/
+system.log
+
+# Окружение и секреты
+.env
+.env.*
+*.env
+
+# IDE и редакторы
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Миграции alembic (если не хочешь их коммитить)
+migrations/env.py
+migrations/script.py.mako
+migrations/versions/*  # ← можно закомментировать, если хочешь коммитить миграции
+alembic.ini
+
+# Временные файлы
+.DS_Store
+Thumbs.db

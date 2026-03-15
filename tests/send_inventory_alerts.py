@@ -7,16 +7,26 @@
 import sys
 import os
 import logging
+import asyncio
+import argparse
 logger = logging.getLogger(__name__)
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.core.inventory_service import inventory_service
-import asyncio
+from app.core.factories import get_inventory_service
+
+inventory_service = get_inventory_service()
 
 
 async def send_alerts_to_console():
-    """Выводит оповещения о запасах в консоль"""
+    """Выводит оповещения о запасах в консоль + опционально отправляет в TG"""
+
+    # Парсим аргументы командной строки
+    parser = argparse.ArgumentParser(description="Проверка и отправка алертов по запасам")
+    parser.add_argument("--send", action="store_true",
+                        help="Отправить уведомления в Telegram (пока заглушка)")
+    args = parser.parse_args()
+
     logger.info("=" * 60)
     logger.info("ПРОВЕРКА ЗАПАСОВ ТОВАРОВ")
     logger.info("=" * 60)
@@ -30,16 +40,16 @@ async def send_alerts_to_console():
 
     if alerts:
         logger.warning(f"НАЙДЕНО ОПОВЕЩЕНИЙ: {len(alerts)}")
-        logger.warning("-" * 60)
         for alert in alerts:
             logger.warning(alert.message)
-        logger.warning("-" * 60)
 
-        # 3. Предлагаем отправить в Telegram
-        send_to_tg = input("\nОтправить эти уведомления в Telegram? (y/n): ").strip().lower()
-
-        if send_to_tg == 'y':
-            logger.warning("Функция отправки в Telegram будет добавлена позже.")
+        if args.send:
+            logger.info("Отправка в Telegram запрошена (реализация пока заглушка)")
+            # Здесь в будущем будет реальная отправка через бот
+            # Например:
+            # await inventory_bot_integration.send_inventory_alerts(alerts)
+        else:
+            logger.info("Чтобы отправить в Telegram, используйте флаг --send")
             logger.warning("Сейчас вы можете скопировать эти уведомления и отправить вручную.")
     else:
         logger.info("Все товары в норме!")
@@ -48,13 +58,13 @@ async def send_alerts_to_console():
         logger.info("СТАТИСТИКА:")
         for product in products:
             status_icon = "✅"
-            if product["status"] == "critical":
+            if product.get("status") == "critical":
                 status_icon = "🚨"
-            elif product["status"] == "warning":
+            elif product.get("status") == "warning":
                 status_icon = "⚠️"
 
             logger.info(f"{status_icon} {product['name']}: {product['current_quantity']} {product['unit']} "
-                  f"(мин: {product['min_threshold']}, крит: {product['critical_threshold']})")
+                        f"(мин: {product['min_threshold']}, крит: {product['critical_threshold']})")
 
 
 if __name__ == "__main__":

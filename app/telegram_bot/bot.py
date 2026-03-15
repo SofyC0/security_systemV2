@@ -25,7 +25,8 @@ class RFIDTelegramBot:
         self.inventory_service = inventory_service
         self.rfid_service = rfid_service
         self.application = None
-        self.chat_ids = set()
+        self.chat_ids = admin_chat_ids or []
+        logger.info(f"Инициализированы чаты для уведомлений: {self.chat_ids}")
         self.loop = None
         self.WAITING_FOR_RFID = 1
 
