@@ -6,8 +6,8 @@
 import asyncio
 import logging
 from typing import List
-from app.core.inventory_service import InventoryAlert, inventory_service
-from app.telegram_bot.bot import RFIDTelegramBot
+
+from app.core.inventory_service import InventoryAlert
 
 logger = logging.getLogger(__name__)
 
@@ -15,13 +15,15 @@ logger = logging.getLogger(__name__)
 class InventoryBotIntegration:
     """Интеграция управления запасами с Telegram ботом"""
 
-    def __init__(self, telegram_bot: RFIDTelegramBot = None):
+    def __init__(self, telegram_bot=None):
         self.bot = telegram_bot
-        self.inventory_service = inventory_service
+        self.inventory_service = None  # будет установлен позже
 
-    def set_bot(self, telegram_bot: RFIDTelegramBot):
-        """Установить бота для отправки уведомлений"""
+    def set_bot(self, telegram_bot):
         self.bot = telegram_bot
+
+    def set_inventory_service(self, inventory_service):
+        self.inventory_service = inventory_service
 
     async def send_inventory_alerts(self, alerts: List[InventoryAlert]):
         """Отправить оповещения о запасах в Telegram"""
@@ -30,23 +32,19 @@ class InventoryBotIntegration:
 
         for alert in alerts:
             try:
-                # Отправляем сообщение всем администраторам
                 await self.bot.send_message_to_all(alert.message)
                 logger.info(f"Отправлено оповещение: {alert.product_name}")
             except Exception as e:
                 logger.error(f"Ошибка отправки оповещения: {e}")
 
-    def check_and_notify(self):
-        """Проверить запасы и отправить уведомления (синхронная версия)"""
-        alerts = self.inventory_service.check_all_products()
-        if alerts and self.bot:
-            # Запускаем асинхронную отправку
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.run_until_complete(self.send_inventory_alerts(alerts))
-            except Exception as e:
-                logger.error(f"Ошибка отправки уведомлений: {e}")
+    async def check_and_notify(self):
+        """Проверить запасы и отправить уведомления (асинхронная версия)"""
+        if not self.inventory_service or not self.bot:
+            logger.warning("Inventory service или бот не установлены")
+            return []
+        alerts = await self.inventory_service.check_all_products()
+        if alerts:
+            await self.send_inventory_alerts(alerts)
         return alerts
 
 

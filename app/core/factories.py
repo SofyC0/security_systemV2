@@ -5,7 +5,6 @@
 
 from app.core.database import db
 
-# Импортируем классы
 from app.core.inventory_service import InventoryService
 from app.core.services import RFIDService, AlarmManager
 

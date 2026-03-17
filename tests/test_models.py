@@ -9,7 +9,6 @@ def test_create_catalog_product(db_session):
         name="Тестовый товар",
         unit="шт.",
         min_threshold=5,
-        critical_threshold=2,
         target_quantity=20
     )
     db_session.add(product)

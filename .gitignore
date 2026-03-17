@@ -52,3 +52,15 @@ alembic.ini
 # Временные файлы
 .DS_Store
 Thumbs.db
+
+# Логи
+logs/
+*.log
+*.log.*
+system.log
+
+# На всякий случай ещё типичные места с логами
+log/
+*.log
+debug.log
+error.log

@@ -33,9 +33,8 @@ def setup_logging(name: str = "rfid_system") -> logging.Logger:
     root_logger.addHandler(file_handler)
     root_logger.addHandler(console_handler)
 
-    # Отдельный логгер для нашего приложения
+    # Отдельный логгер для приложения
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
-    # (наследует обработчики от корневого, можно не добавлять)
 
     return logger

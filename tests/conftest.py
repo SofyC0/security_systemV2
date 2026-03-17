@@ -1,38 +1,31 @@
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from app.core.models import Base
 from app.core.database import Database
-from config.settings import settings
 
 
 @pytest.fixture(scope="function")
-def test_db():
-    """Создаёт временную in-memory базу для тестов"""
-    # Используем sqlite в памяти — быстро и изолировано
-    engine = create_engine("sqlite:///:memory:", echo=False)
-    Base.metadata.create_all(engine)
+async def test_db():
+    """Создаёт временную in-memory базу для тестов (асинхронно)"""
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-    db = Database()  # но мы подменим engine
+    db = Database()
     db.engine = engine
-    db.SessionLocal = SessionLocal
+    db.async_session = async_session
 
     yield db
 
-    Base.metadata.drop_all(engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
 
 
-@pytest.fixture(scope="function")
-def db_session(test_db):
-    """Фикстура сессии БД"""
-    session = test_db.SessionLocal()
-    try:
+@pytest.fixture
+async def db_session(test_db):
+    async with test_db.get_session() as session:
         yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
